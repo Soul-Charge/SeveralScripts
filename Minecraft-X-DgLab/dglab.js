@@ -12,7 +12,7 @@
  * * 将负伤值，根据最大强度值，转换为强度值：
  */
 
-// Death event for 'player'
+// 玩家死亡事件
 EntityEvents.death('player', event => {
   // Use the player's UUID to find the connected connection
   let connection = DgLabManager.getByUUID(event.getEntity().getUuid())
@@ -25,10 +25,14 @@ EntityEvents.death('player', event => {
 
     let AMaxStrength = connection.getStrength().getAMaxStrength();
     let BMaxStrength = connection.getStrength().getBMaxStrength();
+
     // 设置强度为最大值
+    // 需要简单自定义的话，可以直接在强度值后面乘以一个小数，比如A强度值：AMaxStrength * 0.8，这将使死亡时的强度值为最大强度值的80%
     connection.setStrength('a', AMaxStrength);
     connection.setStrength('b', BMaxStrength);
+
     // 恒定波形3s
+    // 这里，40为一秒，120为3秒
     let pulse = DgLabPulseUtil.smoothPulse(400, 100, 120)
     connection.clearPulse('a')
     connection.clearPulse('b')
@@ -38,7 +42,7 @@ EntityEvents.death('player', event => {
   }
 })
 
-// AfterHurt event for 'player'
+// 玩家受伤事件
 EntityEvents.hurt('player', event => {
   // Use the player's UUID to find the connected connection
   let connection = DgLabManager.getByUUID(event.getEntity().getUuid())
@@ -46,44 +50,64 @@ EntityEvents.hurt('player', event => {
   if (connection != null) {
     let AMaxStrength = connection.getStrength().getAMaxStrength();
     let BMaxStrength = connection.getStrength().getBMaxStrength();
-
-    let damage = event.getDamage();
-    let maxHealth = event.getEntity().getMaxHealth();
-    let damagePercent;
+    let maxHealth = event.entity.maxHealth;
     let Astrength = 0;
     let Bstrength = 0;
 
-    // 貌似mod不能让强度超过100，所以如果伤害溢出则固定百分数为1
-    if (damage > maxHealth) {
-      damagePercent = 1;
-    }
-    else {
-      damagePercent = damage / maxHealth;
-    }
+    // hurt事件触发后，生命值不会立刻变动，因此可以得到受伤前的生命值
+    let healthBeforeHurt = event.entity.health;
 
     // 调试用信息
-    // Utils.server.runCommand('say 受到伤害：' + event.damage);
-    // Utils.server.runCommand('say 当前生命最大值：' + event.entity.maxHealth);
-    // Utils.server.runCommand('say 受伤百分数：' + damagePercent);
+    // Utils.server.runCommand('say 受伤前生命值：' + healthBeforeHurt);
 
-    Astrength = damagePercent * AMaxStrength;
-    Bstrength = damagePercent * BMaxStrength;
+    event.server.scheduleInTicks(1, () => {
+      // 等待一个tick，血量变动后即可得到受伤后的生命值
+      let healthAfterHurt = event.entity.health;
 
-    // 调试用信息
-    // Utils.server.runCommand('say 强度值：' + Astrength);
+      // TODO: 其实这里我有点想加入一个判断，如果受伤后的生命值为0，直接结束这次事件的判断，因为死亡后有死亡事件的处理
 
-    connection.setStrength('a', Astrength);
-    connection.setStrength('b', Bstrength);
-    // 频率，强度，持续时间：40 == 1s
-    let pulse = DgLabPulseUtil.smoothPulse(400, Astrength, 40)
+      // 调试用信息
+      // Utils.server.runCommand('say 受伤后生命值：' + healthAfterHurt);
 
-    // method "clearPulse(channel)" clears all waveform queues for the current channel.
-    connection.clearPulse('a')
-    connection.clearPulse('b')
+      // 实际的受伤值为生命值的变动值
+      // 因为受伤后生命值貌似最低为0，所以先不做其他处理
+      let damage = healthBeforeHurt - healthAfterHurt;
 
-    // Use addPulse(channel, waveform data) to add your waveform to a channel
-    connection.addPulse('a', pulse)
-    connection.addPulse('b', pulse)
+      // 在举盾格挡且回血时，受伤值可能为负数，所以将受伤值限制为0
+      damage = Math.max(0, damage);
+
+      // 伤害百分比
+      //貌似不会发生伤害溢出，所以不需要判断
+      let damagePercent = damage / maxHealth;
+
+      // 调试用信息
+      // Utils.server.runCommand('say 受到伤害：' + damage);
+      // Utils.server.runCommand('say 当前生命最大值：' + maxHealth);
+      // Utils.server.runCommand('say 受伤百分数：' + damagePercent);
+
+      // 只有受到伤害时才会计算和设置强度
+      if (damage > 0) {
+        Astrength = damagePercent * AMaxStrength;
+        Bstrength = damagePercent * BMaxStrength;
+        // 调试用信息
+        // Utils.server.runCommand('say A强度值：' + Astrength);
+        // Utils.server.runCommand('say B强度值：' + Bstrength);
+
+        // 设置强度
+        connection.setStrength('a', Astrength);
+        connection.setStrength('b', Bstrength);
+        // 频率，强度，持续时间：40 == 1s
+        let pulse = DgLabPulseUtil.smoothPulse(400, Astrength, 40)
+
+        // method "clearPulse(channel)" clears all waveform queues for the current channel.
+        connection.clearPulse('a')
+        connection.clearPulse('b')
+
+        // Use addPulse(channel, waveform data) to add your waveform to a channel
+        connection.addPulse('a', pulse)
+        connection.addPulse('b', pulse)
+      }
+    });
   }
 })
 // priority: 0
