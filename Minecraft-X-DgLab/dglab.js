@@ -64,7 +64,10 @@ EntityEvents.hurt('player', event => {
       // 等待一个tick，血量变动后即可得到受伤后的生命值
       let healthAfterHurt = event.entity.health;
 
-      // TODO: 其实这里我有点想加入一个判断，如果受伤后的生命值为0，直接结束这次事件的判断，因为死亡后有死亡事件的处理
+      // 如果受伤后的生命值为0，直接结束这次事件的判断，因为死亡后有死亡事件的处理
+      if (healthAfterHurt <= 0) {
+        return;
+      }
 
       // 调试用信息
       // Utils.server.runCommand('say 受伤后生命值：' + healthAfterHurt);
