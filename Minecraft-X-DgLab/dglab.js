@@ -100,7 +100,8 @@ EntityEvents.hurt('player', event => {
         connection.setStrength('a', Astrength);
         connection.setStrength('b', Bstrength);
         // 频率，强度，持续时间：40 == 1s
-        let pulse = DgLabPulseUtil.smoothPulse(400, Astrength, 40)
+        // 波形的强度太低会导致波形几乎没有，所以目前还是固定吧
+        let pulse = DgLabPulseUtil.smoothPulse(400, 100, 40)
 
         // method "clearPulse(channel)" clears all waveform queues for the current channel.
         connection.clearPulse('a')
