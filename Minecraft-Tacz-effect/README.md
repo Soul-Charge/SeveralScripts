@@ -19,3 +19,8 @@
 一个我的路径的例子：`1.20.1\.minecraft\versions\落幕曲\kubejs\server_scripts`
 
 之后可能提供快捷修改附魔，法术等级，法强的脚本
+
+* 关闭效果对自己的伤害
+  创建队伍`/team add gun_spell_allies`
+  关闭队伍友伤`/team modify gun_spell_allies friendlyFire false`
+  加入队伍`/team join gun_spell_allies @p`
